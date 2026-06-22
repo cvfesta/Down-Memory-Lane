@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Set the theme before first paint to avoid a flash of the wrong colours.
+      (function () {
+        try {
+          var t = localStorage.getItem('dml-theme')
+          if (t !== 'light' && t !== 'dark') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.dataset.theme = t
+        } catch (e) {}
+      })()
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Libre+Franklin:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <title>Down Memory Lane · Antiques &amp; Curiosities</title>
+    <meta
+      name="description"
+      content="Down Memory Lane — a rotating collection of antique clocks, oil paintings, carvings, books and curiosities, found, restored and offered for sale."
+    />
+
+    <!--
+      Social-share (Open Graph / Twitter) tags. The image and url are relative;
+      once the site has a domain, change them to absolute URLs, e.g.
+      https://your-domain.com/og-image.png — some platforms require absolute.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Down Memory Lane" />
+    <meta property="og:title" content="Down Memory Lane · Antiques &amp; Curiosities" />
+    <meta
+      property="og:description"
+      content="Antique clocks, oil paintings, carvings, books and curiosities — found, restored and offered for sale."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:url" content="/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Down Memory Lane · Antiques &amp; Curiosities" />
+    <meta
+      name="twitter:description"
+      content="Antique clocks, oil paintings, carvings, books and curiosities — found, restored and offered for sale."
+    />
+    <meta name="twitter:image" content="/og-image.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
