@@ -16,6 +16,24 @@
         } catch (e) {}
       })()
     </script>
+    <script>
+      // SPA fallback for GitHub Pages: 404.html redirects deep links to
+      // /?/<path>; restore the real path here before the app boots so the
+      // router sees it. See public/404.html.
+      (function () {
+        var l = window.location
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&')
+            })
+            .join('?')
+          window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash)
+        }
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -29,9 +47,9 @@
     />
 
     <!--
-      Social-share (Open Graph / Twitter) tags. The image and url are relative;
-      once the site has a domain, change them to absolute URLs, e.g.
-      https://your-domain.com/og-image.png — some platforms require absolute.
+      Social-share (Open Graph / Twitter) tags. URLs are absolute, as some
+      platforms (Twitter especially) require it. If you move to a custom
+      domain, update the https://cvfesta.github.io/Down-Memory-Lane/ base below.
     -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Down Memory Lane" />
@@ -40,15 +58,15 @@
       property="og:description"
       content="Antique clocks, oil paintings, carvings, books and curiosities — found, restored and offered for sale."
     />
-    <meta property="og:image" content="/og-image.png" />
-    <meta property="og:url" content="/" />
+    <meta property="og:image" content="https://cvfesta.github.io/Down-Memory-Lane/og-image.png" />
+    <meta property="og:url" content="https://cvfesta.github.io/Down-Memory-Lane/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Down Memory Lane · Antiques &amp; Curiosities" />
     <meta
       name="twitter:description"
       content="Antique clocks, oil paintings, carvings, books and curiosities — found, restored and offered for sale."
     />
-    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image" content="https://cvfesta.github.io/Down-Memory-Lane/og-image.png" />
   </head>
   <body>
     <div id="root"></div>

@@ -1,37 +1,32 @@
-import { useMemo, useState } from 'react'
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
 import { Browse } from './views/Browse'
 import { ItemDetail } from './views/ItemDetail'
 import { Contact } from './views/Contact'
 import { About } from './views/About'
-import { ITEMS } from './data/items'
-import { deriveCategories } from './lib/categories'
-import type { View } from './types'
+import { getItem } from './data/catalog'
 
-/** Store configuration — equivalent to the original editor props. */
-const CONFIG = {
-  contactEmail: 'hello@example.com',
-  hideSold: false,
-  telLink: 'tel:+15550142890',
-  telDisplay: '(555) 014–2890',
+/** Scroll to the top whenever the route changes (e.g. opening a product). */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
+/** Resolve /item/:id to a product, remounting per id so view state resets. */
+function ItemPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const item = id ? getItem(id) : null
+  if (!item) return <Navigate to="/" replace />
+  return <ItemDetail key={item.id} item={item} onBack={() => navigate('/')} />
 }
 
 export default function App() {
-  const [view, setView] = useState<View>('browse')
-  const [activeCat, setActiveCat] = useState<string | null>(null)
-  const [activeSub, setActiveSub] = useState<string | null>(null)
-  const [itemId, setItemId] = useState<string | null>(null)
-
-  const items = useMemo(() => (CONFIG.hideSold ? ITEMS.filter((i) => i.status !== 'sold') : ITEMS), [])
-  const categories = useMemo(() => deriveCategories(items), [items])
-  const currentItem = useMemo(() => items.find((i) => i.id === itemId) ?? null, [items, itemId])
-
-  const openItem = (id: string) => {
-    setItemId(id)
-    setView('item')
-  }
-
   return (
     <div
       style={{
@@ -43,38 +38,17 @@ export default function App() {
         lineHeight: 1.65,
       }}
     >
-      <Header onNavigate={setView} />
+      <ScrollToTop />
+      <Header />
 
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '0 var(--pad-x) 80px' }}>
-        {view === 'browse' && (
-          <Browse
-            items={items}
-            categories={categories}
-            activeCat={activeCat}
-            activeSub={activeSub}
-            onSelectAll={() => {
-              setActiveCat(null)
-              setActiveSub(null)
-            }}
-            onSelectCategory={(name) => {
-              setActiveCat(name)
-              setActiveSub(null)
-            }}
-            onSelectSub={(cat, sub) => {
-              setActiveCat(cat)
-              setActiveSub(sub)
-            }}
-            onOpenItem={openItem}
-          />
-        )}
-
-        {view === 'item' && currentItem && (
-          <ItemDetail key={currentItem.id} item={currentItem} onBack={() => setView('browse')} />
-        )}
-
-        {view === 'contact' && <Contact />}
-
-        {view === 'about' && <About onContact={() => setView('contact')} />}
+        <Routes>
+          <Route path="/" element={<Browse />} />
+          <Route path="/item/:id" element={<ItemPage />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
       <Footer />

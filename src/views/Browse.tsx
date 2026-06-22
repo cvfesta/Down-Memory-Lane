@@ -1,19 +1,8 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { HoverButton } from '../components/ui'
-import type { Item } from '../data/items'
-import type { Category } from '../lib/categories'
-
-interface BrowseProps {
-  items: Item[]
-  categories: Category[]
-  activeCat: string | null
-  activeSub: string | null
-  onSelectAll: () => void
-  onSelectCategory: (name: string) => void
-  onSelectSub: (cat: string, sub: string) => void
-  onOpenItem: (id: string) => void
-}
+import { VISIBLE_ITEMS, CATEGORIES } from '../data/catalog'
 
 const catBtnBase: CSSProperties = {
   width: '100%',
@@ -83,17 +72,28 @@ const filterToggle: CSSProperties = {
   fontFamily: 'inherit',
 }
 
-export function Browse({
-  items,
-  categories,
-  activeCat,
-  activeSub,
-  onSelectAll,
-  onSelectCategory,
-  onSelectSub,
-  onOpenItem,
-}: BrowseProps) {
+export function Browse() {
+  const navigate = useNavigate()
+  const items = VISIBLE_ITEMS
+  const categories = CATEGORIES
+
+  const [activeCat, setActiveCat] = useState<string | null>(null)
+  const [activeSub, setActiveSub] = useState<string | null>(null)
   const [catsOpen, setCatsOpen] = useState(false)
+
+  const onSelectAll = () => {
+    setActiveCat(null)
+    setActiveSub(null)
+  }
+  const onSelectCategory = (name: string) => {
+    setActiveCat(name)
+    setActiveSub(null)
+  }
+  const onSelectSub = (cat: string, sub: string) => {
+    setActiveCat(cat)
+    setActiveSub(sub)
+  }
+  const onOpenItem = (id: string) => navigate(`/item/${id}`)
 
   let filtered = items
   if (activeCat) {

@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { HoverButton } from './ui'
 import { useTheme } from '../lib/theme'
 import type { ThemePref } from '../lib/theme'
-import type { View } from '../types'
 
 const navBase: CSSProperties = {
   background: 'none',
@@ -27,11 +27,8 @@ const themeSelect: CSSProperties = {
   cursor: 'pointer',
 }
 
-interface HeaderProps {
-  onNavigate: (view: View) => void
-}
-
-export function Header({ onNavigate }: HeaderProps) {
+export function Header() {
+  const navigate = useNavigate()
   const { pref, setTheme } = useTheme()
 
   return (
@@ -58,7 +55,7 @@ export function Header({ onNavigate }: HeaderProps) {
         }}
       >
         <button
-          onClick={() => onNavigate('browse')}
+          onClick={() => navigate('/')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
         >
           <div
@@ -85,13 +82,13 @@ export function Header({ onNavigate }: HeaderProps) {
           </div>
         </button>
         <nav style={{ display: 'flex', gap: 'var(--nav-gap)', alignItems: 'center' }}>
-          <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => onNavigate('browse')}>
+          <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => navigate('/')}>
             Browse
           </HoverButton>
-          <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => onNavigate('about')}>
+          <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => navigate('/about')}>
             About
           </HoverButton>
-          <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => onNavigate('contact')}>
+          <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => navigate('/contact')}>
             Contact
           </HoverButton>
           <select

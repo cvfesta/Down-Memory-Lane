@@ -1,9 +1,6 @@
 import type { CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { HoverButton } from '../components/ui'
-
-interface AboutProps {
-  onContact: () => void
-}
 
 const heading: CSSProperties = {
   fontSize: 10,
@@ -27,7 +24,8 @@ const ctaBase: CSSProperties = {
 }
 const ctaHover: CSSProperties = { background: 'var(--gold)' }
 
-export function About({ onContact }: AboutProps) {
+export function About() {
+  const navigate = useNavigate()
   return (
     <section style={{ paddingTop: 44 }}>
       <div
@@ -101,7 +99,7 @@ export function About({ onContact }: AboutProps) {
             </div>
           </div>
 
-          <HoverButton baseStyle={ctaBase} hoverStyle={ctaHover} onClick={onContact}>
+          <HoverButton baseStyle={ctaBase} hoverStyle={ctaHover} onClick={() => navigate('/contact')}>
             Get in touch
           </HoverButton>
         </div>
