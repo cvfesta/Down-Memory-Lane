@@ -157,7 +157,7 @@ export function Browse() {
                   )}
                 </div>
                 <Card className="rounded-t-none rounded-b-2xl">
-                  <Card.Content className="flex flex-col gap-2 px-4 py-3.5">
+                  <Card.Content className="flex flex-col gap-2">
                     <div className="text-base font-medium leading-tight">{it.title}</div>
                     <div className="flex flex-wrap gap-1.5">
                       <Chip variant="soft" size="sm" className="min-w-0 max-w-full">
