@@ -1,108 +1,73 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
+import { Button } from '@heroui/react'
 import { useNavigate } from 'react-router-dom'
-import { HoverButton } from '../components/ui'
-import { serif } from '../lib/styles'
-
-const heading: CSSProperties = {
-  fontSize: 10,
-  letterSpacing: '0.16em',
-  textTransform: 'uppercase',
-  color: 'var(--gold)',
-  marginBottom: 8,
-}
-
-const ctaBase: CSSProperties = {
-  marginTop: 34,
-  background: 'var(--btn-bg)',
-  color: 'var(--btn-text)',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: 12,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  padding: '13px 30px',
-  borderRadius: 10,
-}
-const ctaHover: CSSProperties = { background: 'var(--gold)' }
+import { DEFAULT_ABOUT, normalizeAbout, toParagraphs } from '../data/about'
+import type { AboutContent } from '../data/about'
 
 export function About() {
   const navigate = useNavigate()
+  const [c, setC] = useState<AboutContent>(DEFAULT_ABOUT)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${import.meta.env.BASE_URL}about.json`, { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setC(normalizeAbout(data))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const paragraphs = toParagraphs(c.body)
+
   return (
-    <section style={{ paddingTop: 44 }}>
-      <div
-        style={{ fontFamily: serif, fontSize: 'var(--hero)', fontWeight: 600, lineHeight: 1.05 }}
-      >
-        About Down Memory Lane
-      </div>
-      <p style={{ margin: '14px 0 44px', maxWidth: 560, color: 'var(--muted)' }}>
-        A note from the people behind the collection.
-      </p>
+    <section className="pt-11">
+      <h1 className="font-serif text-3xl font-semibold sm:text-4xl">About Down Memory Lane</h1>
+      <p className="mb-11 mt-3.5 max-w-[560px] text-neutral-600 dark:text-neutral-400">{c.subhead}</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--cols-about)', gap: 'var(--gap-split)', alignItems: 'start' }}>
-        <div
-          style={{
-            aspectRatio: '4 / 5',
-            background: 'repeating-linear-gradient(135deg,var(--stripe-a) 0,var(--stripe-a) 9px,var(--stripe-b) 9px,var(--stripe-b) 18px)',
-            border: '1px solid var(--line)',
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'ui-monospace,Menlo,monospace',
-              fontSize: 10,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: 'var(--muted-3)',
-            }}
-          >
-            portrait / shop photo
-          </span>
-        </div>
+      <div className="grid items-start gap-10 lg:grid-cols-[330px_1fr] lg:gap-14">
+        <img
+          src={`${import.meta.env.BASE_URL}about.jpg`}
+          alt="Down Memory Lane — the shop"
+          className="aspect-[4/5] w-full rounded-lg border border-neutral-200 object-cover dark:border-neutral-800"
+        />
 
-        <div style={{ maxWidth: 580 }}>
-          <p style={{ margin: '0 0 18px', fontSize: 16, lineHeight: 1.75, color: 'var(--ink-strong)' }}>
-            Down Memory Lane began the way most good collections do — with a love of objects that carry a story. Over the
-            years that habit grew into a small business, seeking out clocks, paintings, books and curiosities with real
-            character and a little history to them.
-          </p>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.75, color: 'var(--ink-strong)' }}>
-            We offer pieces online and in person at antique fairs and markets around the area. Most are found at estate
-            sales, auctions and the occasional lucky discovery, then cleaned, gently repaired where needed, and described
-            honestly — patina, wear and all.
-          </p>
+        <div className="max-w-[580px]">
+          {paragraphs.map((p, i) => (
+            <p
+              key={i}
+              className={`text-base leading-relaxed text-neutral-700 dark:text-neutral-300 ${i > 0 ? 'mt-4' : ''}`}
+            >
+              {p}
+            </p>
+          ))}
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'var(--cols-2)',
-              gap: 32,
-              marginTop: 36,
-              borderTop: '1px solid var(--line)',
-              paddingTop: 30,
-            }}
-          >
-            <div>
-              <div style={heading}>What we look for</div>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: 'var(--ink-soft)' }}>
-                Quality, character and a bit of a story. We favour things that have aged well and were made to last.
-              </p>
+          {c.sections.length > 0 && (
+            <div className="mt-9 grid gap-8 border-t border-neutral-200 pt-7 sm:grid-cols-2 dark:border-neutral-800">
+              {c.sections.map((s, i) => (
+                <div key={i}>
+                  <div className="mb-2 text-[10px] uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+                    {s.title}
+                  </div>
+                  {toParagraphs(s.body).map((p, j) => (
+                    <p
+                      key={j}
+                      className={`text-sm leading-relaxed text-neutral-600 dark:text-neutral-300 ${j > 0 ? 'mt-3' : ''}`}
+                    >
+                      {p}
+                    </p>
+                  ))}
+                </div>
+              ))}
             </div>
-            <div>
-              <div style={heading}>How buying works</div>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: 'var(--ink-soft)' }}>
-                Send an inquiry on anything that catches your eye. We confirm availability, then arrange payment and
-                local pickup or delivery.
-              </p>
-            </div>
-          </div>
+          )}
 
-          <HoverButton baseStyle={ctaBase} hoverStyle={ctaHover} onClick={() => navigate('/contact')}>
+          <Button variant="primary" className="mt-9" onPress={() => navigate('/contact')}>
             Get in touch
-          </HoverButton>
+          </Button>
         </div>
       </div>
     </section>

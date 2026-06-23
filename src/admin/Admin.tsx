@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
+import { TextField, Label, Input, TextArea, Select, ListBox, ComboBox, Button, Spinner, Alert, AlertDialog, Table } from '@heroui/react'
 import type { Item, ItemStatus } from '../data/items'
 import { productImageUrl } from '../data/items'
 import type { ConditionGrade } from '../data/conditions'
 import { CONDITION_GRADES, gradeMeaning } from '../data/conditions'
 import { optimizeImage } from '../lib/optimizeImage'
 import { checkToken, loadProductsFromRepo, commitFiles, IMAGES_DIR, PRODUCTS_PATH, type CommitFile } from '../lib/github'
-import { serif, adminField } from '../lib/styles'
-import { Combobox } from './Combobox'
+import { DEFAULT_ABOUT, ABOUT_PATH, normalizeAbout } from '../data/about'
+import type { AboutContent, AboutSection } from '../data/about'
 
 const TOKEN_KEY = 'dml-gh-token'
 
@@ -18,7 +18,7 @@ interface Draft {
   title: string
   category: string
   sub: string
-  price: string
+  priceAmount: string
   status: ItemStatus
   era: string
   dimH: string
@@ -30,10 +30,10 @@ interface Draft {
   condNotes: string
   label: string
   desc: string
+  ref: string
   images: ImageEntry[]
 }
 
-/** Assemble the stored dimensions string from the structured fields. */
 function buildDim(d: Pick<Draft, 'dimH' | 'dimW' | 'dimD' | 'dimUnit' | 'dimOther'>): string {
   if (d.dimOther.trim()) return d.dimOther.trim()
   const sym = d.dimUnit === 'cm' ? ' cm' : '"'
@@ -44,114 +44,118 @@ function buildDim(d: Pick<Draft, 'dimH' | 'dimW' | 'dimD' | 'dimUnit' | 'dimOthe
   return parts.join(' × ')
 }
 
-const input = adminField
-const label: CSSProperties = {
-  display: 'block',
-  fontSize: 11,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  color: 'var(--muted-2)',
-  marginBottom: 5,
-  marginTop: 16,
+/** Turn whatever was typed into a clean price string: "$1,234" or "Price on request". */
+function formatPrice(amount: string): string {
+  const n = parseFloat(amount.replace(/[^0-9.]/g, ''))
+  return Number.isFinite(n) && n > 0 ? `$${n.toLocaleString('en-US')}` : 'Price on request'
 }
-const btn: CSSProperties = {
-  border: '1px solid var(--line-2)',
-  background: 'var(--surface)',
-  color: 'var(--ink)',
-  borderRadius: 8,
-  padding: '9px 16px',
-  fontSize: 13,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-}
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--btn-bg)', color: 'var(--btn-text)', border: 'none' }
-const note: CSSProperties = { fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }
-const errorText: CSSProperties = { ...note, color: 'var(--error-text)' }
-const h: CSSProperties = { fontFamily: serif, fontWeight: 600 }
-const dropzone: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 4,
-  textAlign: 'center',
-  cursor: 'pointer',
-  border: '2px dashed var(--line-2)',
-  borderRadius: 12,
-  padding: '26px 16px',
-  background: 'var(--surface-2)',
-  color: 'var(--muted)',
-  fontSize: 13,
-}
-const subLabel: CSSProperties = { fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted-2)', display: 'block', marginBottom: 4 }
 
 function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') || 'item'
-  )
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'item'
 }
 
 function emptyDraft(): Draft {
   return {
-    id: null,
-    title: '',
-    category: '',
-    sub: '',
-    price: 'Price on request',
-    status: 'available',
-    era: '',
-    dimH: '',
-    dimW: '',
-    dimD: '',
-    dimUnit: 'in',
-    dimOther: '',
-    grade: 'Good',
-    condNotes: '',
-    label: '',
-    desc: '',
-    images: [],
+    id: null, title: '', category: '', sub: '', priceAmount: '', status: 'available',
+    era: '', dimH: '', dimW: '', dimD: '', dimUnit: 'in', dimOther: '', grade: 'Good',
+    condNotes: '', label: '', desc: '', ref: '', images: [],
   }
 }
 
 function toDraft(it: Item): Draft {
   return {
-    id: it.id,
-    title: it.title,
-    category: it.category,
-    sub: it.sub ?? '',
-    price: it.price,
+    id: it.id, title: it.title, category: it.category, sub: it.sub ?? '',
+    priceAmount: /request/i.test(it.price) ? '' : it.price.replace(/[^0-9.]/g, ''),
     status: it.status,
-    era: it.era,
-    // Existing dimension strings are varied (diameters, sets, framed sizes), so
-    // they load into the free-text field rather than being parsed into boxes.
-    dimH: '',
-    dimW: '',
-    dimD: '',
-    dimUnit: 'in',
-    dimOther: it.dim,
-    grade: it.grade,
-    condNotes: it.condNotes,
-    label: it.label,
-    desc: it.desc,
+    era: it.era, dimH: '', dimW: '', dimD: '', dimUnit: 'in', dimOther: it.dim, grade: it.grade,
+    condNotes: it.condNotes, label: it.label, desc: it.desc, ref: it.ref ?? '',
     images: (it.images ?? []).map((name) => ({ kind: 'existing', name, url: productImageUrl(name) }) as ImageEntry),
   }
+}
+
+// ── Small v3-composition wrappers to keep the form readable ───────────────────
+function TF(props: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string; className?: string }) {
+  return (
+    <TextField value={props.value} onChange={props.onChange} type={props.type} className={props.className}>
+      <Label>{props.label}</Label>
+      <Input placeholder={props.placeholder} />
+    </TextField>
+  )
+}
+
+function Sel(props: { label: string; value: string; onChange: (v: string) => void; options: { id: string; label: string }[]; className?: string }) {
+  return (
+    <Select value={props.value} onChange={(v) => props.onChange(String(v))} className={props.className}>
+      <Label>{props.label}</Label>
+      <Select.Trigger>
+        <Select.Value />
+        <Select.Indicator />
+      </Select.Trigger>
+      <Select.Popover>
+        <ListBox>
+          {props.options.map((o) => (
+            <ListBox.Item key={o.id} id={o.id} textValue={o.label}>
+              {o.label}
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </Select.Popover>
+    </Select>
+  )
+}
+
+function Combo(props: { label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; className?: string }) {
+  return (
+    <ComboBox
+      allowsCustomValue
+      inputValue={props.value}
+      onInputChange={props.onChange}
+      onSelectionChange={(k) => k != null && props.onChange(String(k))}
+      className={props.className}
+    >
+      <Label>{props.label}</Label>
+      <ComboBox.InputGroup>
+        <Input placeholder={props.placeholder} />
+        <ComboBox.Trigger />
+      </ComboBox.InputGroup>
+      <ComboBox.Popover>
+        <ListBox>
+          {props.options.map((o) => (
+            <ListBox.Item key={o} id={o} textValue={o}>
+              {o}
+              <ListBox.ItemIndicator />
+            </ListBox.Item>
+          ))}
+        </ListBox>
+      </ComboBox.Popover>
+    </ComboBox>
+  )
+}
+
+function StatusAlert({ status, text }: { status: 'success' | 'danger'; text: string }) {
+  return (
+    <Alert status={status} className="mt-3">
+      <Alert.Indicator />
+      <Alert.Content>
+        <Alert.Title>{text}</Alert.Title>
+      </Alert.Content>
+    </Alert>
+  )
 }
 
 export default function Admin() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY))
   const [tokenField, setTokenField] = useState('')
-  const [phase, setPhase] = useState<'gate' | 'loading' | 'list' | 'edit'>(token ? 'loading' : 'gate')
+  const [phase, setPhase] = useState<'gate' | 'loading' | 'list' | 'edit' | 'about'>(token ? 'loading' : 'gate')
   const [products, setProducts] = useState<Item[]>([])
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [aboutDraft, setAboutDraft] = useState<AboutContent | null>(null)
   const [editIndex, setEditIndex] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
 
-  // Validate the token and load products whenever the token changes.
   useEffect(() => {
     if (!token) return
     let cancelled = false
@@ -164,9 +168,6 @@ export default function Admin() {
         return
       }
       try {
-        // Authoritative copy from the repo; if it isn't committed yet, fall
-        // back to whatever the site is currently serving (the local file in
-        // dev, the deployed file in prod) so there's always something to edit.
         let items = await loadProductsFromRepo<Item[]>(token)
         if (items === null) {
           const served = await fetch(`${import.meta.env.BASE_URL}products.json`, { cache: 'no-cache' })
@@ -224,9 +225,38 @@ export default function Admin() {
     setPhase('edit')
   }
 
-  const removeProduct = async (i: number) => {
+  const startEditAbout = async () => {
+    setMsg('')
+    setErr('')
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}about.json`, { cache: 'no-cache' })
+      const data = r.ok ? await r.json() : null
+      setAboutDraft(normalizeAbout(data))
+    } catch {
+      setAboutDraft(DEFAULT_ABOUT)
+    }
+    setPhase('about')
+  }
+
+  const saveAbout = async () => {
+    if (!token || !aboutDraft) return
+    setBusy(true)
+    setErr('')
+    try {
+      await commitFiles(token, 'Admin: update About page', [
+        { path: ABOUT_PATH, text: JSON.stringify(aboutDraft, null, 2) + '\n' },
+      ])
+      setPhase('list')
+      setMsg('About page saved. Your site will update in a minute or two.')
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Could not save.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const doRemove = async (i: number) => {
     if (!token) return
-    if (!window.confirm(`Remove "${products[i].title}"? This cannot be undone.`)) return
     setBusy(true)
     setErr('')
     try {
@@ -279,7 +309,7 @@ export default function Admin() {
         title: draft.title.trim(),
         category: draft.category.trim() || 'Uncategorized',
         sub: draft.sub.trim() || null,
-        price: draft.price.trim() || 'Price on request',
+        price: formatPrice(draft.priceAmount),
         status: draft.status,
         era: draft.era.trim(),
         dim: buildDim(draft),
@@ -287,6 +317,7 @@ export default function Admin() {
         condNotes: draft.condNotes.trim(),
         label: draft.label.trim() || draft.title.trim(),
         desc: draft.desc.trim(),
+        ...(draft.ref.trim() ? { ref: draft.ref.trim() } : {}),
         images: finalNames,
       }
 
@@ -311,105 +342,258 @@ export default function Admin() {
     }
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   const categories = [...new Set(products.map((p) => p.category))].sort()
   const subs = [...new Set(products.map((p) => p.sub).filter((s): s is string => !!s))].sort()
 
   if (phase === 'loading') {
-    return <div style={{ padding: '60px 0', ...note }}>Connecting…</div>
+    return (
+      <div className="flex flex-col items-center gap-3 py-16 text-neutral-600 dark:text-neutral-400">
+        <Spinner />
+        Connecting…
+      </div>
+    )
   }
 
   if (phase === 'gate') {
     return (
-      <div style={{ maxWidth: 520, margin: '0 auto', padding: '48px 0' }}>
-        <h1 style={{ ...h, fontSize: 30, margin: '0 0 8px' }}>Shop admin</h1>
-        <p style={{ ...note, marginBottom: 20 }}>
-          Paste your GitHub access token to manage products. It's stored only in this browser. Need one? Create a
-          fine-grained token on GitHub for the <strong>Down-Memory-Lane</strong> repository with{' '}
-          <strong>Contents: Read &amp; write</strong>.
+      <div className="mx-auto max-w-[520px] py-12">
+        <h1 className="mb-2 font-serif text-3xl font-semibold">Shop admin</h1>
+        <p className="mb-5 text-sm text-neutral-600 dark:text-neutral-400">
+          Paste your GitHub access token to manage products. It's stored only in this browser. Create a fine-grained
+          token for the <strong>Down-Memory-Lane</strong> repository with <strong>Contents: Read &amp; write</strong>.
         </p>
-        <input
-          type="password"
-          value={tokenField}
-          onChange={(e) => setTokenField(e.target.value)}
-          placeholder="github_pat_…"
-          style={input}
-          onKeyDown={(e) => e.key === 'Enter' && connect()}
-        />
-        {err && <p style={{ ...errorText, marginTop: 12 }}>{err}</p>}
-        <button style={{ ...btnPrimary, marginTop: 16 }} onClick={connect} disabled={busy || !tokenField.trim()}>
-          {busy ? 'Connecting…' : 'Connect'}
-        </button>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            connect()
+          }}
+        >
+          <TextField type="password" value={tokenField} onChange={setTokenField}>
+            <Label>Access token</Label>
+            <Input placeholder="github_pat_…" />
+          </TextField>
+          {err && <StatusAlert status="danger" text={err} />}
+          <Button type="submit" variant="primary" className="mt-4" isPending={busy} isDisabled={!tokenField.trim()}>
+            {({ isPending }) => (isPending ? 'Connecting…' : 'Connect')}
+          </Button>
+        </form>
       </div>
     )
   }
 
   if (phase === 'list') {
     return (
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '40px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <h1 style={{ ...h, fontSize: 30, margin: 0 }}>Products</h1>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={btnPrimary} onClick={startNew}>+ Add product</button>
-            <button style={btn} onClick={signOut}>Sign out</button>
+      <div className="mx-auto max-w-[760px] py-10">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="font-serif text-3xl font-semibold">Products</h1>
+          <div className="flex gap-2">
+            <Button variant="primary" onPress={startNew}>
+              + Add product
+            </Button>
+            <Button variant="outline" onPress={startEditAbout}>
+              About page
+            </Button>
+            <Button variant="outline" onPress={signOut}>
+              Sign out
+            </Button>
           </div>
         </div>
-        <p style={{ ...note, marginTop: 8 }}>{products.length} products · changes go live 1–2 minutes after saving.</p>
-        {msg && <p style={{ ...note, color: 'var(--available)', marginTop: 4 }}>{msg}</p>}
-        {err && <p style={{ ...errorText, marginTop: 4 }}>{err}</p>}
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+          {products.length} products · changes go live 1–2 minutes after saving.
+        </p>
+        {msg && <StatusAlert status="success" text={msg} />}
+        {err && <StatusAlert status="danger" text={err} />}
 
-        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {products.map((p, i) => (
-            <div
-              key={p.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 14,
-                border: '1px solid var(--line)',
-                borderRadius: 10,
-                padding: 10,
-                background: 'var(--surface)',
-              }}
-            >
-              <div
-                style={{
-                  width: 54,
-                  height: 54,
-                  flex: 'none',
-                  borderRadius: 6,
-                  background: 'var(--image-bg)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {p.images && p.images[0] ? (
-                  <img
-                    src={productImageUrl(p.images[0])}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                ) : null}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{p.title}</div>
-                <div style={{ ...note, fontSize: 12 }}>
-                  {p.category}
-                  {p.sub ? ` · ${p.sub}` : ''} · {p.price} · {p.status}
+        <div className="mt-5">
+          <Table>
+            <Table.ScrollContainer>
+              <Table.Content aria-label="Products">
+                <Table.Header>
+                  <Table.Column isRowHeader>Product</Table.Column>
+                  <Table.Column>Details</Table.Column>
+                  <Table.Column>{''}</Table.Column>
+                </Table.Header>
+                <Table.Body>
+                  {products.map((p, i) => (
+                    <Table.Row key={p.id} id={p.id}>
+                      <Table.Cell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md bg-[var(--image-bg)]">
+                            {p.images && p.images[0] ? (
+                              <img src={productImageUrl(p.images[0])} alt="" className="size-full object-contain" />
+                            ) : null}
+                          </div>
+                          <div>
+                            <span className="font-medium">{p.title}</span>
+                            {p.ref ? (
+                              <span className="block text-xs text-neutral-600 dark:text-neutral-400">Ref: {p.ref}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                          {p.category}
+                          {p.sub ? ` · ${p.sub}` : ''} · {p.price} · {p.status}
+                        </span>
+                      </Table.Cell>
+                      <Table.Cell>
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onPress={() => startEdit(i)} isDisabled={busy}>
+                            Edit
+                          </Button>
+                          <AlertDialog>
+                            <Button size="sm" variant="danger-soft" isDisabled={busy}>
+                              Delete
+                            </Button>
+                            <AlertDialog.Backdrop>
+                              <AlertDialog.Container>
+                                <AlertDialog.Dialog className="sm:max-w-[420px]">
+                                  <AlertDialog.Header>
+                                    <AlertDialog.Icon status="danger" />
+                                    <AlertDialog.Heading>Remove “{p.title}”?</AlertDialog.Heading>
+                                  </AlertDialog.Header>
+                                  <AlertDialog.Body>
+                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                                      This permanently removes the product from your shop. It can't be undone.
+                                    </p>
+                                  </AlertDialog.Body>
+                                  <AlertDialog.Footer>
+                                    <Button slot="close" variant="tertiary">
+                                      Cancel
+                                    </Button>
+                                    <Button slot="close" variant="danger" onPress={() => doRemove(i)}>
+                                      Delete
+                                    </Button>
+                                  </AlertDialog.Footer>
+                                </AlertDialog.Dialog>
+                              </AlertDialog.Container>
+                            </AlertDialog.Backdrop>
+                          </AlertDialog>
+                        </div>
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table.Content>
+            </Table.ScrollContainer>
+          </Table>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'about' && aboutDraft) {
+    const setA = (patch: Partial<AboutContent>) => setAboutDraft({ ...aboutDraft, ...patch })
+    const setSection = (i: number, patch: Partial<AboutSection>) =>
+      setA({ sections: aboutDraft.sections.map((s, j) => (j === i ? { ...s, ...patch } : s)) })
+    const addSection = () => setA({ sections: [...aboutDraft.sections, { title: '', body: '' }] })
+    const removeSection = (i: number) => setA({ sections: aboutDraft.sections.filter((_, j) => j !== i) })
+    const moveSection = (i: number, dir: -1 | 1) => {
+      const j = i + dir
+      if (j < 0 || j >= aboutDraft.sections.length) return
+      const next = [...aboutDraft.sections]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      setA({ sections: next })
+    }
+    return (
+      <div className="mx-auto max-w-[640px] py-9">
+        <Button variant="outline" size="sm" className="mb-4" onPress={() => setPhase('list')} isDisabled={busy}>
+          ← Back
+        </Button>
+        <h1 className="mb-2 font-serif text-2xl font-semibold">Edit About page</h1>
+        <p className="mb-5 text-sm text-neutral-600 dark:text-neutral-400">
+          Write as much or as little as you like. Leave a blank line between paragraphs to start a new one. Sections are
+          the small titled blocks lower on the page — add, rename, reorder or remove them however you want.
+        </p>
+
+        <div className="flex flex-col gap-4">
+          <TextField value={aboutDraft.subhead} onChange={(v) => setA({ subhead: v })}>
+            <Label>Subheading (under the title)</Label>
+            <Input />
+          </TextField>
+          <TextField value={aboutDraft.body} onChange={(v) => setA({ body: v })}>
+            <Label>Main text</Label>
+            <TextArea className="min-h-[200px]" />
+            <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+              Tip: press Enter twice to leave a blank line and start a new paragraph.
+            </p>
+          </TextField>
+        </div>
+
+        <div className="mt-7 flex items-center justify-between">
+          <h2 className="font-serif text-lg font-semibold">Sections</h2>
+          <Button variant="outline" size="sm" onPress={addSection}>
+            + Add section
+          </Button>
+        </div>
+
+        {aboutDraft.sections.length === 0 ? (
+          <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+            No sections. The page will just show the main text above.
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-4">
+            {aboutDraft.sections.map((s, i) => (
+              <div key={i} className="rounded-lg border border-default-200 bg-default-50 p-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+                    Section {i + 1}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isIconOnly
+                      aria-label="Move section up"
+                      isDisabled={i === 0}
+                      onPress={() => moveSection(i, -1)}
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      isIconOnly
+                      aria-label="Move section down"
+                      isDisabled={i === aboutDraft.sections.length - 1}
+                      onPress={() => moveSection(i, 1)}
+                    >
+                      ↓
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-label="Remove section"
+                      onPress={() => removeSection(i)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <TextField value={s.title} onChange={(v) => setSection(i, { title: v })}>
+                    <Label>Title</Label>
+                    <Input placeholder="e.g. What we look for" />
+                  </TextField>
+                  <TextField value={s.body} onChange={(v) => setSection(i, { body: v })}>
+                    <Label>Text</Label>
+                    <TextArea className="min-h-[100px]" />
+                  </TextField>
                 </div>
               </div>
-              <button style={btn} onClick={() => startEdit(i)} disabled={busy}>Edit</button>
-              <button
-                style={{ ...btn, color: 'var(--error-text)', borderColor: 'var(--error-border)' }}
-                onClick={() => removeProduct(i)}
-                disabled={busy}
-              >
-                Delete
-              </button>
-            </div>
-          ))}
+            ))}
+          </div>
+        )}
+
+        {err && <StatusAlert status="danger" text={err} />}
+        <div className="mt-6 flex gap-2.5">
+          <Button variant="primary" onPress={saveAbout} isPending={busy}>
+            {({ isPending }) => (isPending ? 'Saving…' : 'Save')}
+          </Button>
+          <Button variant="outline" onPress={() => setPhase('list')} isDisabled={busy}>
+            Cancel
+          </Button>
         </div>
       </div>
     )
@@ -421,11 +605,7 @@ export default function Admin() {
 
   const addFiles = (files: FileList | null) => {
     if (!files) return
-    const added: ImageEntry[] = Array.from(files).map((file) => ({
-      kind: 'new',
-      file,
-      url: URL.createObjectURL(file),
-    }))
+    const added: ImageEntry[] = Array.from(files).map((file) => ({ kind: 'new', file, url: URL.createObjectURL(file) }))
     setDraft({ ...draft, images: [...draft.images, ...added] })
   }
   const removeImage = (i: number) => setDraft({ ...draft, images: draft.images.filter((_, idx) => idx !== i) })
@@ -439,182 +619,154 @@ export default function Admin() {
   const dimPreview = buildDim(draft)
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: '36px 0' }}>
-      <button style={{ ...btn, marginBottom: 16 }} onClick={() => setPhase('list')} disabled={busy}>← Back</button>
-      <h1 style={{ ...h, fontSize: 26, margin: '0 0 14px' }}>{editIndex === null ? 'Add product' : 'Edit product'}</h1>
+    <div className="mx-auto max-w-[640px] py-9">
+      <Button variant="outline" size="sm" className="mb-4" onPress={() => setPhase('list')} isDisabled={busy}>
+        ← Back
+      </Button>
+      <h1 className="mb-4 font-serif text-2xl font-semibold">{editIndex === null ? 'Add product' : 'Edit product'}</h1>
 
-      {/* Photos first — the main image is what shows in listings. */}
-      <label style={label}>Photos · first is the main image</label>
+      <p className="mb-2 text-[11px] uppercase tracking-wide text-neutral-600 dark:text-neutral-400">Photos · first is the main image</p>
       {draft.images.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+        <div className="mb-3 flex flex-wrap gap-3">
           {draft.images.map((img, i) => (
-            <div key={img.url} style={{ width: 256 }}>
+            <div key={img.url} className="w-64">
               <div
-                style={{
-                  width: 256,
-                  height: 256,
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  background: 'var(--image-bg)',
-                  border: i === 0 ? '2px solid var(--gold)' : '1px solid var(--line)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                }}
+                className={`relative flex size-64 items-center justify-center overflow-hidden rounded-md bg-[var(--image-bg)] ${i === 0 ? 'ring-2 ring-neutral-900 dark:ring-neutral-100' : 'border border-neutral-200 dark:border-neutral-800'}`}
               >
-                <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={img.url} alt="" className="size-full object-contain" />
                 {i === 0 && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      left: 6,
-                      background: 'var(--gold)',
-                      color: '#fff',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      padding: '2px 7px',
-                      borderRadius: 5,
-                    }}
-                  >
+                  <span className="absolute left-1.5 top-1.5 rounded bg-neutral-900 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white dark:bg-neutral-100 dark:text-neutral-900">
                     Main
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
+              <div className="mt-1.5 flex justify-between">
                 {i !== 0 ? (
-                  <button style={{ ...btn, padding: '3px 8px', fontSize: 11 }} onClick={() => makeLead(i)}>
+                  <Button size="sm" variant="ghost" onPress={() => makeLead(i)}>
                     Make main
-                  </button>
+                  </Button>
                 ) : (
                   <span />
                 )}
-                <button
-                  style={{ ...btn, padding: '3px 8px', fontSize: 11, color: 'var(--error-text)', border: 'none' }}
-                  onClick={() => removeImage(i)}
-                >
+                <Button size="sm" variant="ghost" onPress={() => removeImage(i)}>
                   Remove
-                </button>
+                </Button>
               </div>
             </div>
           ))}
         </div>
       )}
       <label
-        style={dropzone}
+        className="flex cursor-pointer flex-col items-center gap-1 rounded-lg border-2 border-dashed border-neutral-300 px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400 dark:border-neutral-700"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault()
           addFiles(e.dataTransfer.files)
         }}
       >
-        <span style={{ fontSize: 22, lineHeight: 1 }}>＋</span>
+        <span className="text-[22px] leading-none">＋</span>
         <span>
           <strong>Drag photos here</strong> or click to choose
         </span>
-        <span style={{ fontSize: 11 }}>Big phone photos are fine — they're resized &amp; compressed automatically.</span>
-        <input type="file" accept="image/*" multiple onChange={(e) => addFiles(e.target.files)} style={{ display: 'none' }} />
+        <span className="text-[11px]">Big phone photos are fine — resized &amp; compressed automatically.</span>
+        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
       </label>
 
-      <label style={label}>Title</label>
-      <input style={input} value={draft.title} onChange={(e) => setField('title', e.target.value)} />
+      <div className="mt-4 flex flex-col gap-4">
+        <TF label="Title" value={draft.title} onChange={(v) => setField('title', v)} />
 
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label style={label}>Category</label>
-          <Combobox value={draft.category} onChange={(v) => setField('category', v)} options={categories} placeholder="e.g. Clocks" />
+        <div>
+          <TF
+            label="Internal reference (optional)"
+            value={draft.ref}
+            onChange={(v) => setField('ref', v)}
+            placeholder="e.g. shelf B-12 / lot 487"
+          />
+          <p className="mt-1.5 text-xs text-neutral-600 dark:text-neutral-400">
+            For your own records only — never shown to customers.
+          </p>
         </div>
-        <div style={{ flex: 1 }}>
-          <label style={label}>Sub-category (optional)</label>
-          <Combobox value={draft.sub} onChange={(v) => setField('sub', v)} options={subs} placeholder="e.g. Wall" />
+
+        <div className="flex gap-3">
+          <Combo label="Category" value={draft.category} onChange={(v) => setField('category', v)} options={categories} placeholder="e.g. Clocks" className="flex-1" />
+          <Combo label="Sub-category" value={draft.sub} onChange={(v) => setField('sub', v)} options={subs} placeholder="optional" className="flex-1" />
         </div>
+
+        <div>
+          <div className="flex gap-3">
+            <TF label="Price (USD)" value={draft.priceAmount} onChange={(v) => setField('priceAmount', v)} placeholder="e.g. 480" className="flex-1" />
+            <Sel
+              label="Status"
+              value={draft.status}
+              onChange={(v) => setField('status', v as ItemStatus)}
+              options={[
+                { id: 'available', label: 'Available' },
+                { id: 'sold', label: 'Sold' },
+              ]}
+              className="flex-1"
+            />
+          </div>
+          <p className="mt-1.5 text-xs text-neutral-600 dark:text-neutral-400">
+            Enter a number — leave blank to show “Price on request”.
+          </p>
+        </div>
+
+        <div>
+          <Sel
+            label="Condition grade"
+            value={draft.grade}
+            onChange={(v) => setField('grade', v as ConditionGrade)}
+            options={CONDITION_GRADES.map((g) => ({ id: g.value, label: g.value }))}
+          />
+          <div className="mt-2 rounded-md border border-default-200 bg-default-50 px-3 py-2 text-sm text-neutral-600 dark:text-neutral-300">
+            <span className="font-medium text-foreground">{draft.grade}</span> — {gradeMeaning(draft.grade)}
+          </div>
+        </div>
+
+        <TF label="Condition notes (optional)" value={draft.condNotes} onChange={(v) => setField('condNotes', v)} placeholder="e.g. light surface wear; recently serviced" />
+        <TF label="Era / origin" value={draft.era} onChange={(v) => setField('era', v)} placeholder="e.g. c. 1890 · France" />
+
+        <div>
+          <p className="mb-1.5 text-sm font-medium">Dimensions</p>
+          <div className="flex items-end gap-2">
+            <TF label="Height" value={draft.dimH} onChange={(v) => setField('dimH', v)} placeholder="14" className="min-w-0 flex-1" />
+            <TF label="Width" value={draft.dimW} onChange={(v) => setField('dimW', v)} placeholder="18" className="min-w-0 flex-1" />
+            <TF label="Depth" value={draft.dimD} onChange={(v) => setField('dimD', v)} placeholder="7" className="min-w-0 flex-1" />
+            <Sel
+              label="Unit"
+              value={draft.dimUnit}
+              onChange={(v) => setField('dimUnit', v as 'in' | 'cm')}
+              options={[{ id: 'in', label: 'in' }, { id: 'cm', label: 'cm' }]}
+              className="w-20 shrink-0"
+            />
+          </div>
+          <TF
+            label="Or enter exactly (optional)"
+            value={draft.dimOther}
+            onChange={(v) => setField('dimOther', v)}
+            placeholder={'e.g. 12" diameter, Set of 12'}
+            className="mt-3"
+          />
+          <p className="mt-1.5 text-xs text-neutral-600 dark:text-neutral-400">
+            Typing in the field above <strong>overrides</strong> the Height / Width / Depth boxes. Will display as:{' '}
+            <strong>{dimPreview || '—'}</strong>
+          </p>
+        </div>
+
+        <TextField value={draft.desc} onChange={(v) => setField('desc', v)}>
+          <Label>Description</Label>
+          <TextArea className="min-h-[256px]" />
+        </TextField>
       </div>
 
-      <div style={{ display: 'flex', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label style={label}>Price</label>
-          <input style={input} value={draft.price} onChange={(e) => setField('price', e.target.value)} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={label}>Status</label>
-          <select style={input} value={draft.status} onChange={(e) => setField('status', e.target.value as ItemStatus)}>
-            <option value="available">available</option>
-            <option value="sold">sold</option>
-          </select>
-        </div>
-      </div>
-
-      <label style={label}>Condition grade</label>
-      <select style={input} value={draft.grade} onChange={(e) => setField('grade', e.target.value as ConditionGrade)}>
-        {CONDITION_GRADES.map((g) => (
-          <option key={g.value} value={g.value}>
-            {g.value} — {g.meaning}
-          </option>
-        ))}
-      </select>
-      <p style={{ ...note, fontSize: 12, marginTop: 5 }}>{gradeMeaning(draft.grade)}</p>
-
-      <label style={label}>Condition notes (optional)</label>
-      <input
-        style={input}
-        value={draft.condNotes}
-        onChange={(e) => setField('condNotes', e.target.value)}
-        placeholder="e.g. light surface wear; recently serviced"
-      />
-
-      <label style={label}>Era / origin</label>
-      <input style={input} value={draft.era} onChange={(e) => setField('era', e.target.value)} placeholder="e.g. c. 1890 · France" />
-
-      <label style={label}>Dimensions</label>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <div style={{ flex: 1 }}>
-          <span style={subLabel}>Height</span>
-          <input style={input} value={draft.dimH} onChange={(e) => setField('dimH', e.target.value)} placeholder="14" />
-        </div>
-        <div style={{ flex: 1 }}>
-          <span style={subLabel}>Width</span>
-          <input style={input} value={draft.dimW} onChange={(e) => setField('dimW', e.target.value)} placeholder="18" />
-        </div>
-        <div style={{ flex: 1 }}>
-          <span style={subLabel}>Depth</span>
-          <input style={input} value={draft.dimD} onChange={(e) => setField('dimD', e.target.value)} placeholder="7" />
-        </div>
-        <div style={{ width: 76 }}>
-          <span style={subLabel}>Unit</span>
-          <select style={input} value={draft.dimUnit} onChange={(e) => setField('dimUnit', e.target.value as 'in' | 'cm')}>
-            <option value="in">in</option>
-            <option value="cm">cm</option>
-          </select>
-        </div>
-      </div>
-      <input
-        style={{ ...input, marginTop: 8 }}
-        value={draft.dimOther}
-        onChange={(e) => setField('dimOther', e.target.value)}
-        placeholder="Or enter exactly (diameter, set, framed size) — takes precedence"
-      />
-      <p style={{ ...note, fontSize: 12, marginTop: 5 }}>
-        Will display as: <strong>{dimPreview || '—'}</strong>
-      </p>
-
-      <label style={label}>Description</label>
-      <textarea
-        style={{ ...input, resize: 'vertical', minHeight: 110 }}
-        value={draft.desc}
-        onChange={(e) => setField('desc', e.target.value)}
-      />
-
-      {err && <p style={{ ...errorText, marginTop: 14 }}>{err}</p>}
-      <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-        <button style={btnPrimary} onClick={save} disabled={busy}>
-          {busy ? 'Saving…' : 'Save'}
-        </button>
-        <button style={btn} onClick={() => setPhase('list')} disabled={busy}>
+      {err && <StatusAlert status="danger" text={err} />}
+      <div className="mt-4 flex gap-2.5">
+        <Button variant="primary" onPress={save} isPending={busy}>
+          {({ isPending }) => (isPending ? 'Saving…' : 'Save')}
+        </Button>
+        <Button variant="outline" onPress={() => setPhase('list')} isDisabled={busy}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   )

@@ -1,79 +1,12 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { HoverButton } from '../components/ui'
+import { Card, Chip, Button, Skeleton, Disclosure } from '@heroui/react'
 import { PlaceholderSwatch } from '../components/PlaceholderSwatch'
 import { useCatalog } from '../data/CatalogContext'
 import { productImageUrl } from '../data/items'
-import { serif } from '../lib/styles'
 
-const catBtnBase: CSSProperties = {
-  width: '100%',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  textAlign: 'left',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 8,
-  padding: '9px 10px',
-  borderRadius: 10,
-  color: 'var(--ink)',
-  fontSize: 13.5,
-}
-const catBtnHover: CSSProperties = { background: 'var(--hover-bg)' }
-
-const subBtnBase: CSSProperties = {
-  width: '100%',
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  textAlign: 'left',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 8,
-  padding: '6px 10px',
-  color: 'var(--muted)',
-  fontSize: 12.5,
-}
-const subBtnHover: CSSProperties = { color: 'var(--gold)' }
-
-const cardBase: CSSProperties = {
-  background: 'var(--surface)',
-  border: '1px solid var(--line)',
-  borderRadius: 10,
-  overflow: 'hidden',
-  cursor: 'pointer',
-  textAlign: 'left',
-  display: 'flex',
-  flexDirection: 'column',
-  padding: 0,
-  transition: 'border-color .15s,box-shadow .15s,transform .15s',
-}
-const cardHover: CSSProperties = {
-  borderColor: 'var(--card-hover-border)',
-  boxShadow: '0 10px 26px -14px var(--card-shadow)',
-  transform: 'translateY(-2px)',
-}
-
-// Mobile-only "Categories" filter bar (collapsed by default; CSS hides it on desktop).
-const filterToggle: CSSProperties = {
-  width: '100%',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 10,
-  background: 'var(--surface)',
-  border: '1px solid var(--line)',
-  borderRadius: 10,
-  padding: '12px 14px',
-  marginBottom: 12,
-  cursor: 'pointer',
-  color: 'var(--ink)',
-  fontSize: 13,
-  fontFamily: 'inherit',
-}
+const GRID = 'grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(212px,1fr))]'
+const catBtn = 'flex w-full items-center justify-between rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-default-100'
 
 export function Browse() {
   const navigate = useNavigate()
@@ -83,25 +16,17 @@ export function Browse() {
   const [activeSub, setActiveSub] = useState<string | null>(null)
   const [catsOpen, setCatsOpen] = useState(false)
 
-  const onSelectAll = () => {
-    setActiveCat(null)
-    setActiveSub(null)
-  }
-  const onSelectCategory = (name: string) => {
-    setActiveCat(name)
-    setActiveSub(null)
-  }
-  const onSelectSub = (cat: string, sub: string) => {
-    setActiveCat(cat)
-    setActiveSub(sub)
-  }
-  const onOpenItem = (id: string) => navigate(`/item/${id}`)
-
   if (loading) {
-    return <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--muted)' }}>Loading the collection…</div>
+    return (
+      <div className={`${GRID} pt-10`}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />
+        ))}
+      </div>
+    )
   }
   if (error) {
-    return <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--error-text)' }}>{error}</div>
+    return <div className="py-24 text-center text-danger">{error}</div>
   }
 
   let filtered = items
@@ -109,255 +34,146 @@ export function Browse() {
     filtered = filtered.filter((i) => i.category === activeCat)
     if (activeSub) filtered = filtered.filter((i) => i.sub === activeSub)
   }
-
   const heading = activeSub ?? activeCat ?? 'All Pieces'
   const countLabel = `${filtered.length} ${filtered.length === 1 ? 'piece' : 'pieces'}`
 
+  const categoryList = (
+    <div className="mt-2 flex flex-col">
+      <button
+        className={catBtn}
+        onClick={() => {
+          setActiveCat(null)
+          setActiveSub(null)
+          setCatsOpen(false)
+        }}
+      >
+        <span>All Pieces</span>
+        <span className="text-xs text-neutral-600 dark:text-neutral-400">{items.length}</span>
+      </button>
+
+      {categories.map((cat) => {
+        const isActive = activeCat === cat.name
+        const showSubs = isActive && cat.subs.length > 0
+        return (
+          <div key={cat.name}>
+            <button
+              className={catBtn}
+              onClick={() => {
+                setActiveCat(cat.name)
+                setActiveSub(null)
+                if (cat.subs.length === 0) setCatsOpen(false)
+              }}
+            >
+              <span className={isActive ? 'font-medium' : ''}>{cat.name}</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">{cat.count}</span>
+            </button>
+
+            {showSubs && (
+              <div className="my-1 ml-3.5 flex flex-col border-l border-default-200">
+                {cat.subs.map((sub) => (
+                  <button
+                    key={sub.name}
+                    className="flex w-full items-center justify-between px-2.5 py-1.5 text-[13px] text-neutral-600 dark:text-neutral-400 transition-colors hover:text-foreground"
+                    onClick={() => {
+                      setActiveCat(cat.name)
+                      setActiveSub(sub.name)
+                      setCatsOpen(false)
+                    }}
+                  >
+                    <span className={isActive && activeSub === sub.name ? 'font-medium' : ''}>{sub.name}</span>
+                    <span className="text-xs text-neutral-600 dark:text-neutral-400">{sub.count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+
   return (
     <section>
-      <div style={{ padding: '44px 0 36px', borderBottom: '1px solid var(--line)', marginBottom: 40 }}>
-        <div
-          style={{
-            fontFamily: serif,
-            fontSize: 'var(--hero)',
-            fontWeight: 600,
-            lineHeight: 1.05,
-            maxWidth: 620,
-          }}
-        >
+      <div className="border-b border-default-200 py-10">
+        <h1 className="max-w-[640px] font-serif text-3xl font-semibold sm:text-4xl">
           A rotating selection of clocks, paintings &amp; curiosities.
-        </div>
-        <p style={{ margin: '16px 0 0', maxWidth: 540, color: 'var(--muted)', fontSize: 15 }}>
+        </h1>
+        <p className="mt-4 max-w-[540px] text-neutral-600 dark:text-neutral-400">
           Found, restored and offered for sale. Browse by category below — see something you like? Send an inquiry and we
           will get back to you.
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--cols-browse)', gap: 'var(--gap-browse)', alignItems: 'start' }}>
-        <aside className="dml-sidebar" data-open={catsOpen ? 'true' : 'false'}>
-          <button
-            type="button"
-            className="dml-cat-toggle"
-            aria-expanded={catsOpen}
-            onClick={() => setCatsOpen((o) => !o)}
-            style={filterToggle}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span
-                style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--gold)', flex: 'none' }}
-              >
-                Categories
-              </span>
-              <span
-                style={{ color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                {heading}
-              </span>
-            </span>
-            <span aria-hidden style={{ color: 'var(--muted)', flex: 'none' }}>
-              {catsOpen ? '▲' : '▼'}
-            </span>
-          </button>
+      <div className="mt-10 grid gap-8 lg:grid-cols-[212px_1fr] lg:gap-12">
+        <aside className="h-max lg:sticky lg:top-24">
+          {/* Mobile: collapsible filter */}
+          <div className="lg:hidden">
+            <Disclosure isExpanded={catsOpen} onExpandedChange={setCatsOpen}>
+              <Disclosure.Heading>
+                <Button slot="trigger" variant="outline" className="w-full justify-between">
+                  Categories · {heading}
+                  <Disclosure.Indicator />
+                </Button>
+              </Disclosure.Heading>
+              <Disclosure.Content>
+                <Disclosure.Body>{categoryList}</Disclosure.Body>
+              </Disclosure.Content>
+            </Disclosure>
+          </div>
 
-          <div className="dml-cat-list">
-            <div
-              className="dml-cat-heading"
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                color: 'var(--gold)',
-                padding: '0 10px 10px',
-                borderBottom: '1px solid var(--line)',
-              }}
-            >
+          {/* Desktop: always shown */}
+          <div className="hidden lg:block">
+            <div className="border-b border-default-200 px-2.5 pb-2.5 text-[10px] uppercase tracking-widest text-neutral-600 dark:text-neutral-400">
               Categories
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', marginTop: 8 }}>
-              <HoverButton
-                baseStyle={catBtnBase}
-                hoverStyle={catBtnHover}
-                onClick={() => {
-                  onSelectAll()
-                  setCatsOpen(false)
-                }}
-              >
-                <span>All Pieces</span>
-                <span style={{ color: 'var(--muted-3)', fontSize: 11 }}>{items.length}</span>
-              </HoverButton>
-
-              {categories.map((cat) => {
-                const isActive = activeCat === cat.name
-                const showSubs = isActive && cat.subs.length > 0
-                return (
-                  <div key={cat.name}>
-                    <HoverButton
-                      baseStyle={catBtnBase}
-                      hoverStyle={catBtnHover}
-                      onClick={() => {
-                        onSelectCategory(cat.name)
-                        // Leaf categories apply and collapse; ones with sub-filters stay open.
-                        if (cat.subs.length === 0) setCatsOpen(false)
-                      }}
-                    >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {isActive && (
-                        <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: 'var(--gold)',
-                            display: 'block',
-                            flex: 'none',
-                          }}
-                        />
-                      )}
-                      {cat.name}
-                    </span>
-                    <span style={{ color: 'var(--muted-3)', fontSize: 11 }}>{cat.count}</span>
-                  </HoverButton>
-
-                  {showSubs && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        margin: '2px 0 6px',
-                        borderLeft: '1px solid var(--line)',
-                        marginLeft: 14,
-                      }}
-                    >
-                      {cat.subs.map((sub) => {
-                        const subActive = isActive && activeSub === sub.name
-                        return (
-                          <HoverButton
-                            key={sub.name}
-                            baseStyle={subBtnBase}
-                            hoverStyle={subBtnHover}
-                            onClick={() => {
-                              onSelectSub(cat.name, sub.name)
-                              setCatsOpen(false)
-                            }}
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                              {subActive && (
-                                <span
-                                  style={{
-                                    width: 5,
-                                    height: 5,
-                                    borderRadius: '50%',
-                                    background: 'var(--gold)',
-                                    display: 'block',
-                                    flex: 'none',
-                                  }}
-                                />
-                              )}
-                              {sub.name}
-                            </span>
-                            <span style={{ color: 'var(--muted-4)', fontSize: 11 }}>{sub.count}</span>
-                          </HoverButton>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-            <p style={{ margin: '18px 10px 0', fontSize: 12, color: 'var(--muted-5)', lineHeight: 1.5 }}>
-              New finds are added to the shelves often — check back.
-            </p>
+            {categoryList}
           </div>
         </aside>
 
         <div>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
-            <h2 style={{ margin: 0, fontFamily: serif, fontSize: 'var(--section)', fontWeight: 600 }}>
-              {heading}
-            </h2>
-            <span
-              style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--muted-3)' }}
-            >
-              {countLabel}
-            </span>
+          <div className="mb-6 flex items-baseline justify-between">
+            <h2 className="font-serif text-2xl font-semibold sm:text-3xl">{heading}</h2>
+            <span className="text-xs uppercase tracking-wider text-neutral-600 dark:text-neutral-400">{countLabel}</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(var(--card-min),1fr))', gap: 26 }}>
-            {filtered.map((it) => {
-              const metaLine = [it.sub ?? it.category, it.era].filter(Boolean).join(' · ')
-              return (
-                <HoverButton
-                  key={it.id}
-                  baseStyle={cardBase}
-                  hoverStyle={cardHover}
-                  onClick={() => onOpenItem(it.id)}
-                >
-                  <div style={{ position: 'relative' }}>
-                    {it.images && it.images.length > 0 ? (
-                      <img
-                        src={productImageUrl(it.images[0])}
-                        alt={it.title}
-                        style={{
-                          display: 'block',
-                          width: '100%',
-                          aspectRatio: '4 / 5',
-                          objectFit: 'contain',
-                          background: 'var(--image-bg)',
-                          padding: 10,
-                        }}
-                      />
-                    ) : (
+          <div className={GRID}>
+            {filtered.map((it) => (
+              <button key={it.id} onClick={() => navigate(`/item/${it.id}`)} className="block text-left">
+                <div className="relative">
+                  {it.images && it.images.length > 0 ? (
+                    <img
+                      src={productImageUrl(it.images[0])}
+                      alt={it.title}
+                      className="aspect-[4/5] w-full rounded-t-2xl bg-[var(--image-bg)] object-contain"
+                    />
+                  ) : (
+                    <div className="overflow-hidden rounded-t-2xl">
                       <PlaceholderSwatch aspectRatio="4 / 5" label={it.label} border={false} />
-                    )}
-                    {it.status === 'sold' && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: 12,
-                          left: 12,
-                          background: 'var(--sold-bg)',
-                          color: '#fff',
-                          fontSize: 9.5,
-                          fontWeight: 600,
-                          letterSpacing: '0.16em',
-                          textTransform: 'uppercase',
-                          padding: '4px 9px',
-                        }}
-                      >
-                        Sold
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    style={{ padding: '14px 15px 16px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 9.5,
-                        letterSpacing: '0.14em',
-                        textTransform: 'uppercase',
-                        color: 'var(--gold)',
-                      }}
-                    >
-                      {metaLine}
                     </div>
-                    <div
-                      style={{
-                        fontFamily: "'Libre Franklin',system-ui,sans-serif",
-                        fontSize: 17,
-                        fontWeight: 600,
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {it.title}
+                  )}
+                  {it.status === 'sold' && (
+                    <Chip variant="primary" className="absolute left-3 top-3">
+                      Sold
+                    </Chip>
+                  )}
+                </div>
+                <Card className="rounded-t-none rounded-b-2xl">
+                  <Card.Content className="flex flex-col gap-2 px-4 py-3.5">
+                    <div className="text-base font-medium leading-tight">{it.title}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Chip variant="soft" size="sm" className="min-w-0 max-w-full">
+                        <span className="block truncate">{it.sub ?? it.category}</span>
+                      </Chip>
+                      {it.era && (
+                        <Chip variant="soft" size="sm" className="min-w-0 max-w-full">
+                          <span className="block truncate">{it.era}</span>
+                        </Chip>
+                      )}
                     </div>
-                    <div style={{ marginTop: 'auto', paddingTop: 6, fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>
-                      {it.price}
-                    </div>
-                  </div>
-                </HoverButton>
-              )
-            })}
+                    <div className="text-sm font-medium">{it.price}</div>
+                  </Card.Content>
+                </Card>
+              </button>
+            ))}
           </div>
         </div>
       </div>

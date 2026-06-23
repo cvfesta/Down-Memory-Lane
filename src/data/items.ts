@@ -19,6 +19,11 @@ export interface Item {
   label: string
   desc: string
   /**
+   * Internal-only reference (e.g. a shelf/inventory tag). Used by the shop
+   * owner for bookkeeping — never shown to customers.
+   */
+  ref?: string
+  /**
    * Product photo filenames (under public/products/), in display order — the
    * first is the lead image. Items may have one, several, or (for now) none,
    * in which case a striped placeholder swatch is shown.

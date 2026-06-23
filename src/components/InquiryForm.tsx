@@ -1,23 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { HoverButton, FocusInput, FocusTextarea } from './ui'
-import { readForm, sendContactForm } from '../lib/contact'
-import {
-  serif,
-  fieldBase,
-  fieldFocus,
-  primaryBtn,
-  primaryBtnHover,
-  primaryBtnSending,
-  outlineBtn,
-  outlineBtnHover,
-  errorBanner,
-} from '../lib/styles'
+import { TextField, Label, Input, TextArea, Button } from '@heroui/react'
+import { sendContactForm } from '../lib/contact'
 
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
 interface InquiryFormProps {
-  /** Email subject for this submission. */
   subject: string
   heading: string
   intro: string
@@ -28,11 +16,6 @@ interface InquiryFormProps {
   successText: string
 }
 
-/**
- * The shared message form behind both the Contact page and each product's
- * inquiry box — name/phone/email/message, honeypot, sending/sent/error states,
- * delivered via Web3Forms.
- */
 export function InquiryForm({
   subject,
   heading,
@@ -45,14 +28,19 @@ export function InquiryForm({
 }: InquiryFormProps) {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [message, setMessage] = useState('')
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const fields = readForm(e.currentTarget)
+    const honeypot = e.currentTarget.elements.namedItem('botcheck')
+    const botcheck = honeypot instanceof HTMLInputElement ? honeypot.checked : false
     setError('')
     setStatus('sending')
     try {
-      await sendContactForm(subject, fields)
+      await sendContactForm(subject, { name, email, phone, message, botcheck })
       setStatus('sent')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -62,47 +50,54 @@ export function InquiryForm({
 
   if (status === 'sent') {
     return (
-      <>
-        <div style={{ fontFamily: serif, fontSize: 24, fontWeight: 600, marginBottom: 6 }}>{successTitle}</div>
-        <p style={{ margin: '0 0 18px', fontSize: 14, color: 'var(--muted)' }}>{successText}</p>
-        <HoverButton baseStyle={outlineBtn} hoverStyle={outlineBtnHover} onClick={() => setStatus('idle')}>
+      <div>
+        <h3 className="mb-2 text-2xl font-semibold">{successTitle}</h3>
+        <p className="mb-4 text-neutral-600 dark:text-neutral-400">{successText}</p>
+        <Button
+          variant="outline"
+          onPress={() => {
+            setStatus('idle')
+            setName('')
+            setEmail('')
+            setPhone('')
+            setMessage('')
+          }}
+        >
           Send another
-        </HoverButton>
-      </>
+        </Button>
+      </div>
     )
   }
 
   return (
-    <>
-      <h3 style={{ margin: '0 0 4px', fontFamily: "'Libre Franklin',system-ui,sans-serif", fontSize: 20, fontWeight: 600 }}>
-        {heading}
-      </h3>
-      <p style={{ margin: '0 0 18px', fontSize: 13, color: 'var(--muted-2)' }}>{intro}</p>
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input type="checkbox" name="botcheck" tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ display: 'none' }} />
-        {status === 'error' && <div style={errorBanner}>{error}</div>}
-        <div style={{ display: 'grid', gridTemplateColumns: 'var(--cols-2)', gap: 12 }}>
-          <FocusInput baseStyle={fieldBase} focusStyle={fieldFocus} name="name" placeholder="Your name" required />
-          <FocusInput baseStyle={fieldBase} focusStyle={fieldFocus} name="phone" placeholder="Phone (optional)" />
+    <div>
+      <h3 className="mb-1 text-xl font-semibold">{heading}</h3>
+      <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">{intro}</p>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <input type="checkbox" name="botcheck" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+        {status === 'error' && <p className="text-sm text-danger">{error}</p>}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextField isRequired value={name} onChange={setName}>
+            <Label>Your name</Label>
+            <Input placeholder="Your name" />
+          </TextField>
+          <TextField value={phone} onChange={setPhone}>
+            <Label>Phone (optional)</Label>
+            <Input placeholder="Phone" />
+          </TextField>
         </div>
-        <FocusInput baseStyle={fieldBase} focusStyle={fieldFocus} name="email" type="email" placeholder="Email" required />
-        <FocusTextarea
-          baseStyle={{ ...fieldBase, resize: 'vertical' }}
-          focusStyle={fieldFocus}
-          name="message"
-          rows={messageRows}
-          placeholder={messagePlaceholder}
-          required
-        />
-        <HoverButton
-          baseStyle={status === 'sending' ? { ...primaryBtn, ...primaryBtnSending } : primaryBtn}
-          hoverStyle={status === 'sending' ? {} : primaryBtnHover}
-          type="submit"
-          disabled={status === 'sending'}
-        >
-          {status === 'sending' ? 'Sending…' : submitLabel}
-        </HoverButton>
+        <TextField isRequired type="email" value={email} onChange={setEmail}>
+          <Label>Email</Label>
+          <Input placeholder="Email" />
+        </TextField>
+        <TextField isRequired value={message} onChange={setMessage}>
+          <Label>Message</Label>
+          <TextArea rows={messageRows} placeholder={messagePlaceholder} />
+        </TextField>
+        <Button type="submit" variant="primary" isPending={status === 'sending'} className="self-start">
+          {({ isPending }) => (isPending ? 'Sending…' : submitLabel)}
+        </Button>
       </form>
-    </>
+    </div>
   )
 }

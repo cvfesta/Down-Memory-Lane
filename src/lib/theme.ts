@@ -20,11 +20,12 @@ function resolve(pref: ThemePref): ResolvedTheme {
 }
 
 function apply(pref: ThemePref) {
-  document.documentElement.dataset.theme = resolve(pref)
+  // HeroUI switches on the `dark` class on a parent element.
+  document.documentElement.classList.toggle('dark', resolve(pref) === 'dark')
 }
 
 /**
- * Theme preference synced to <html data-theme> and localStorage. Defaults to
+ * Theme preference synced to the <html> `dark` class and localStorage. Defaults to
  * 'auto', which tracks the OS setting (and live-updates if the OS flips). The
  * cycle order is Auto → Light → Dark → Auto.
  */

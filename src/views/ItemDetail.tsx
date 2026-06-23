@@ -1,65 +1,24 @@
 import { useState } from 'react'
-import type { CSSProperties } from 'react'
-import { HoverButton } from '../components/ui'
+import { Button, Card } from '@heroui/react'
 import { InquiryForm } from '../components/InquiryForm'
 import { PlaceholderSwatch } from '../components/PlaceholderSwatch'
 import type { Item } from '../data/items'
 import { productImageUrl } from '../data/items'
-import { serif } from '../lib/styles'
 
 interface ItemDetailProps {
   item: Item
   onBack: () => void
 }
 
-const backBtnBase: CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  fontSize: 12,
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  color: 'var(--muted)',
-  padding: 0,
-  marginBottom: 28,
-}
-const backBtnHover: CSSProperties = { color: 'var(--gold)' }
-
-const specLabel: CSSProperties = {
-  padding: '13px 0',
-  borderBottom: '1px solid var(--line)',
-  fontSize: 10,
-  letterSpacing: '0.14em',
-  textTransform: 'uppercase',
-  color: 'var(--muted-3)',
-  alignSelf: 'center',
-}
-const specValue: CSSProperties = { padding: '13px 0', borderBottom: '1px solid var(--line)', fontSize: 14 }
-
-const mainImage: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  aspectRatio: '1 / 1',
-  objectFit: 'contain',
-  background: 'var(--image-bg)',
-  border: '1px solid var(--line)',
-  padding: 16,
-}
-
-const thumbBtnBase: CSSProperties = {
-  padding: 0,
-  cursor: 'pointer',
-  background: 'var(--image-bg)',
-  borderRadius: 4,
-  overflow: 'hidden',
-  lineHeight: 0,
-}
-
-const thumbImg: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  aspectRatio: '1 / 1',
-  objectFit: 'contain',
+function Spec({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <div className="self-center border-b border-neutral-200 py-3 text-[10px] uppercase tracking-wider text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
+        {label}
+      </div>
+      <div className="border-b border-neutral-200 py-3 text-sm dark:border-neutral-800">{value}</div>
+    </>
+  )
 }
 
 export function ItemDetail({ item, onBack }: ItemDetailProps) {
@@ -74,36 +33,33 @@ export function ItemDetail({ item, onBack }: ItemDetailProps) {
       : [item.grade, item.condNotes].filter(Boolean).join(' · ')
 
   return (
-    <section style={{ paddingTop: 32 }}>
-      <HoverButton baseStyle={backBtnBase} hoverStyle={backBtnHover} onClick={onBack}>
-        ←&nbsp;&nbsp;Back to the collection
-      </HoverButton>
+    <section className="pt-8">
+      <Button variant="ghost" size="sm" className="mb-6" onPress={onBack}>
+        ← Back to the collection
+      </Button>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'var(--cols-split)', gap: 'var(--gap-split)', alignItems: 'start' }}>
+      <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-14">
         <div>
           {images.length > 0 ? (
             <>
-              <img src={productImageUrl(images[Math.min(activePhoto, images.length - 1)])} alt={item.title} style={mainImage} />
+              <img
+                src={productImageUrl(images[Math.min(activePhoto, images.length - 1)])}
+                alt={item.title}
+                className="aspect-square w-full rounded-2xl border border-neutral-200 bg-[var(--image-bg)] object-contain p-4 dark:border-neutral-800"
+              />
               {images.length > 1 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 10 }}>
-                  {images.map((src, i) => {
-                    const isActive = i === activePhoto
-                    return (
-                      <button
-                        key={src}
-                        type="button"
-                        onClick={() => setActivePhoto(i)}
-                        aria-label={`View photo ${i + 1}`}
-                        style={{
-                          ...thumbBtnBase,
-                          border: `1px solid ${isActive ? 'var(--gold)' : 'var(--line)'}`,
-                          outline: isActive ? '1px solid var(--gold)' : 'none',
-                        }}
-                      >
-                        <img src={productImageUrl(src)} alt={`${item.title} — photo ${i + 1}`} style={thumbImg} />
-                      </button>
-                    )
-                  })}
+                <div className="mt-2.5 grid grid-cols-4 gap-2.5">
+                  {images.map((src, i) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setActivePhoto(i)}
+                      aria-label={`View photo ${i + 1}`}
+                      className={`overflow-hidden rounded-lg bg-[var(--image-bg)] ${i === activePhoto ? 'ring-2 ring-neutral-900 dark:ring-neutral-100' : 'border border-neutral-200 dark:border-neutral-800'}`}
+                    >
+                      <img src={productImageUrl(src)} alt="" className="aspect-square w-full object-contain" />
+                    </button>
+                  ))}
                 </div>
               )}
             </>
@@ -113,80 +69,43 @@ export function ItemDetail({ item, onBack }: ItemDetailProps) {
         </div>
 
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            {item.status === 'sold' && (
-              <span
-                style={{
-                  background: 'var(--sold-bg)',
-                  color: '#fff',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  letterSpacing: '0.16em',
-                  textTransform: 'uppercase',
-                  padding: '5px 11px',
-                }}
-              >
+          <div className="mb-3.5 flex items-center gap-2.5">
+            {available ? (
+              <span className="inline-flex items-center rounded-full border border-green-700/30 bg-green-600/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-green-800 dark:border-green-400/30 dark:bg-green-400/10 dark:text-green-300">
+                Available
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-red-700/30 bg-red-600/10 px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-red-800 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-300">
                 Sold
               </span>
             )}
-            {available && (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  fontSize: 11,
-                  letterSpacing: '0.14em',
-                  textTransform: 'uppercase',
-                  color: 'var(--available)',
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--available)', display: 'block' }} />
-                Available
-              </span>
-            )}
           </div>
-          <div
-            style={{
-              fontSize: 10,
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              color: 'var(--gold)',
-              marginBottom: 6,
-            }}
-          >
-            {catLine}
-          </div>
-          <h1 style={{ margin: 0, fontFamily: serif, fontSize: 'var(--h1)', fontWeight: 600, lineHeight: 1.08 }}>
-            {item.title}
-          </h1>
-          <div style={{ fontSize: 24, fontWeight: 500, margin: '14px 0 24px' }}>{item.price}</div>
+          <div className="mb-1.5 text-[10px] uppercase tracking-wider text-neutral-600 dark:text-neutral-400">{catLine}</div>
+          <h1 className="font-serif text-3xl font-semibold leading-tight sm:text-4xl">{item.title}</h1>
+          <div className="my-4 text-2xl font-medium">{item.price}</div>
 
-          <div style={{ borderTop: '1px solid var(--line)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 0 }}>
-              <div style={specLabel}>Dimensions</div>
-              <div style={specValue}>{item.dim}</div>
-              <div style={specLabel}>Era &amp; Origin</div>
-              <div style={specValue}>{item.era}</div>
-              <div style={specLabel}>Condition</div>
-              <div style={specValue}>{conditionText}</div>
-            </div>
+          <div className="grid grid-cols-[120px_1fr] border-t border-neutral-200 sm:grid-cols-[130px_1fr] dark:border-neutral-800">
+            <Spec label="Dimensions" value={item.dim} />
+            <Spec label="Era & Origin" value={item.era} />
+            <Spec label="Condition" value={conditionText} />
           </div>
 
-          <p style={{ margin: '24px 0 0', color: 'var(--ink-soft)', fontSize: 15, lineHeight: 1.7 }}>{item.desc}</p>
+          <p className="mt-6 text-[15px] leading-relaxed text-neutral-600 dark:text-neutral-300">{item.desc}</p>
 
-          <div style={{ marginTop: 34, borderTop: '1px solid var(--line)', paddingTop: 28 }}>
-            <InquiryForm
-              subject={`Inquiry: ${item.title}`}
-              heading="Interested in this piece?"
-              intro="Send a note and we will get back to you about availability and viewing."
-              submitLabel="Send inquiry"
-              messagePlaceholder="Tell us what you'd like to know — measurements, condition, history, or arranging a viewing or delivery."
-              messageRows={4}
-              successTitle="Thank you — your message is on its way."
-              successText={`We have received your inquiry about the ${item.title} and will be in touch shortly.`}
-            />
-          </div>
+          <Card className="mt-9">
+            <Card.Content className="p-6">
+              <InquiryForm
+                subject={`Inquiry: ${item.title}`}
+                heading="Interested in this piece?"
+                intro="Send a note and we will get back to you about availability and viewing."
+                submitLabel="Send inquiry"
+                messagePlaceholder="Tell us what you'd like to know — measurements, condition, history, or arranging a viewing or delivery."
+                messageRows={4}
+                successTitle="Thank you — your message is on its way."
+                successText={`We have received your inquiry about the ${item.title} and will be in touch shortly.`}
+              />
+            </Card.Content>
+          </Card>
         </div>
       </div>
     </section>

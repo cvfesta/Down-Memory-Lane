@@ -1,125 +1,47 @@
-*{margin:0;padding:0;box-sizing:border-box}
+@import 'tailwindcss';
+@import '@heroui/styles';
 
+/* Make the built-in `font-serif` utility use the brand display serif. */
+@theme {
+  --font-serif: 'Playfair Display', Georgia, serif;
+}
+
+/* Helpers for the bits that aren't HeroUI components (image bg + gradients). */
 :root {
-  /* ── Colour palette — light (default) ── */
-  --bg: #f5f0e6;
-  --surface: #fffefb;
-  --surface-2: #f9f5ec;
   --image-bg: #efe7d6;
-  --ink: #2a251e;
-  --ink-strong: #3f3829;
-  --ink-soft: #4a4234;
-  --muted: #6b6253;
-  --muted-2: #756b56;
-  --muted-3: #847862;
-  --muted-4: #978a6e;
-  --muted-5: #8a7d64;
-  --gold: #927235;
-  --line: #e2dac9;
-  --line-2: #d9d0bd;
-  --hover-bg: #ece4d2;
   --stripe-a: #ece3d2;
   --stripe-b: #e7dcc6;
-  --card-hover-border: #c9b78a;
-  --available: #5b6b4f;
-  --sold-bg: #8a3d34;
-  --error-bg: #fbeae8;
-  --error-border: #e3b7b1;
-  --error-text: #8a3d34;
-  --card-shadow: rgba(63,49,20,0.4);
-  --header-bg: rgba(245,240,230,0.92);
-  --btn-bg: #2a251e;
-  --btn-text: #f5f0e6;
-  color-scheme: light;
-
-  /* ── Layout (responsive) — desktop defaults ── */
-  --pad-x: 32px;
-  --gap-split: 56px;
-  --gap-browse: 52px;
-  --hero: 46px;
-  --h1: 42px;
-  --section: 32px;
-  --brand: 26px;
-  --nav-gap: 30px;
-  --cols-browse: 212px 1fr;
-  --cols-split: 1fr 1fr;
-  --cols-about: 330px 1fr;
-  --cols-2: 1fr 1fr;
-  --card-min: 212px;
+}
+.dark {
+  --image-bg: #26262a;
+  --stripe-a: #26262a;
+  --stripe-b: #2f2f33;
 }
 
-:root[data-theme='dark'] {
-  --bg: #161310;
-  --surface: #211d17;
-  --surface-2: #1d1913;
-  --image-bg: #2a251d;
-  --ink: #ece4d2;
-  --ink-strong: #f0e9da;
-  --ink-soft: #d7cebb;
-  --muted: #b4a890;
-  --muted-2: #a99d85;
-  --muted-3: #9b8f76;
-  --muted-4: #8e8268;
-  --muted-5: #a99d85;
-  --gold: #cda75d;
-  --line: #38322a;
-  --line-2: #463f31;
-  --hover-bg: #2b2720;
-  --stripe-a: #2a251d;
-  --stripe-b: #322c22;
-  --card-hover-border: #6f5e34;
-  --available: #8fae7d;
-  --sold-bg: #a04a3f;
-  --error-bg: #3a1f1c;
-  --error-border: #6b3b35;
-  --error-text: #f0b4ab;
-  --card-shadow: rgba(0,0,0,0.55);
-  --header-bg: rgba(22,19,16,0.92);
-  --btn-bg: #e8dcc2;
-  --btn-text: #1a1610;
-  color-scheme: dark;
+/* ── HeroUI token overrides ── */
+/* Light: warm off-white card/list/contact "base" surface + a dark accent so
+   primary buttons are dark-on-light. Dark mode flips the accent to light. */
+:root:not(.dark) {
+  --surface: #fffefb;
+  --field-background: #f9f5ec;
+  --accent: #2a251e;
+  --accent-foreground: #f5f0e6;
+}
+.dark {
+  --accent: #e8e2d4;
+  --accent-foreground: #1a1610;
 }
 
-/* ── Mobile / tablet layout ── */
-@media (max-width: 760px) {
-  :root {
-    --pad-x: 16px;
-    --gap-split: 28px;
-    --gap-browse: 28px;
-    --hero: 30px;
-    --h1: 27px;
-    --section: 23px;
-    --brand: 21px;
-    --nav-gap: 15px;
-    --cols-browse: 1fr;
-    --cols-split: 1fr;
-    --cols-about: 1fr;
-    --cols-2: 1fr;
-    --card-min: 150px;
-  }
+html,
+body,
+#root {
+  min-height: 100vh;
 }
-
-html, body, #root { min-height: 100vh; }
 
 body {
-  background: var(--bg);
-  color: var(--ink);
-  font-family: 'Libre Franklin', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  background: #f5f0e6;
+  @apply text-neutral-900;
 }
-
-/* Categories sidebar: sticky on desktop, normal flow once stacked on mobile. */
-.dml-sidebar { position: sticky; top: 84px; }
-
-/* The "Categories" filter bar is desktop-hidden; the full list always shows. */
-.dml-cat-toggle { display: none; }
-
-@media (max-width: 760px) {
-  .dml-sidebar { position: static; top: auto; }
-  /* On mobile the list collapses behind a tappable filter bar. */
-  .dml-cat-toggle { display: flex; }
-  .dml-cat-heading { display: none; }
-  .dml-sidebar[data-open='false'] .dml-cat-list { display: none; }
+.dark body {
+  @apply bg-neutral-950 text-neutral-100;
 }
