@@ -2,7 +2,10 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HoverButton } from '../components/ui'
-import { VISIBLE_ITEMS, CATEGORIES } from '../data/catalog'
+import { PlaceholderSwatch } from '../components/PlaceholderSwatch'
+import { useCatalog } from '../data/CatalogContext'
+import { productImageUrl } from '../data/items'
+import { serif } from '../lib/styles'
 
 const catBtnBase: CSSProperties = {
   width: '100%',
@@ -74,8 +77,7 @@ const filterToggle: CSSProperties = {
 
 export function Browse() {
   const navigate = useNavigate()
-  const items = VISIBLE_ITEMS
-  const categories = CATEGORIES
+  const { items, categories, loading, error } = useCatalog()
 
   const [activeCat, setActiveCat] = useState<string | null>(null)
   const [activeSub, setActiveSub] = useState<string | null>(null)
@@ -95,6 +97,13 @@ export function Browse() {
   }
   const onOpenItem = (id: string) => navigate(`/item/${id}`)
 
+  if (loading) {
+    return <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--muted)' }}>Loading the collection…</div>
+  }
+  if (error) {
+    return <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--error-text)' }}>{error}</div>
+  }
+
   let filtered = items
   if (activeCat) {
     filtered = filtered.filter((i) => i.category === activeCat)
@@ -109,7 +118,7 @@ export function Browse() {
       <div style={{ padding: '44px 0 36px', borderBottom: '1px solid var(--line)', marginBottom: 40 }}>
         <div
           style={{
-            fontFamily: "'Playfair Display',Georgia,serif",
+            fontFamily: serif,
             fontSize: 'var(--hero)',
             fontWeight: 600,
             lineHeight: 1.05,
@@ -264,7 +273,7 @@ export function Browse() {
 
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
-            <h2 style={{ margin: 0, fontFamily: "'Playfair Display',Georgia,serif", fontSize: 'var(--section)', fontWeight: 600 }}>
+            <h2 style={{ margin: 0, fontFamily: serif, fontSize: 'var(--section)', fontWeight: 600 }}>
               {heading}
             </h2>
             <span
@@ -286,7 +295,7 @@ export function Browse() {
                   <div style={{ position: 'relative' }}>
                     {it.images && it.images.length > 0 ? (
                       <img
-                        src={it.images[0]}
+                        src={productImageUrl(it.images[0])}
                         alt={it.title}
                         style={{
                           display: 'block',
@@ -298,28 +307,7 @@ export function Browse() {
                         }}
                       />
                     ) : (
-                      <div
-                        style={{
-                          aspectRatio: '4 / 5',
-                          background:
-                            'repeating-linear-gradient(135deg,var(--stripe-a) 0,var(--stripe-a) 8px,var(--stripe-b) 8px,var(--stripe-b) 16px)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontFamily: 'ui-monospace,Menlo,monospace',
-                            fontSize: 10,
-                            letterSpacing: '0.12em',
-                            textTransform: 'uppercase',
-                            color: 'var(--muted-3)',
-                          }}
-                        >
-                          {it.label}
-                        </span>
-                      </div>
+                      <PlaceholderSwatch aspectRatio="4 / 5" label={it.label} border={false} />
                     )}
                     {it.status === 'sold' && (
                       <div

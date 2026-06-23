@@ -1,3 +1,5 @@
+import { serif } from '../lib/styles'
+
 export function Footer() {
   return (
     <footer style={{ borderTop: '1px solid var(--line)' }}>
@@ -13,7 +15,7 @@ export function Footer() {
           gap: 12,
         }}
       >
-        <div style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 18, fontWeight: 600 }}>
+        <div style={{ fontFamily: serif, fontSize: 18, fontWeight: 600 }}>
           Down Memory Lane
         </div>
         <div style={{ fontSize: 12, color: 'var(--muted-5)', letterSpacing: '0.04em' }}>

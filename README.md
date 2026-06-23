@@ -38,62 +38,79 @@ Requires Node 18+ (Vite 8). Create a `.env` from `.env.example` and add your Web
 
 ```
 src/
-  data/items.ts          # THE CATALOG — all products live here
-  assets/products/        # product images (.webp)
+  data/
+    items.ts             # Item type + image-url helper (data itself is in public/)
+    CatalogContext.tsx   # loads public/products.json at runtime, app-wide
+  admin/Admin.tsx        # the /admin content-management page
   lib/
-    categories.ts         # derives the category tree from the products
-    contact.ts            # Web3Forms submission + honeypot
-    theme.ts              # light/dark/auto theme hook
+    categories.ts        # derives the category tree from the products
+    contact.ts           # Web3Forms submission + honeypot
+    theme.ts             # light/dark/auto theme hook
+    github.ts            # admin: GitHub API (single-commit writes)
+    optimizeImage.ts     # admin: in-browser resize → WebP
   components/             # Header, Footer, shared UI (HoverButton, inputs)
   views/                  # Browse, ItemDetail, Contact, About
-  App.tsx                # view state / routing-by-state
+  App.tsx                # routes: /, /item/:id, /contact, /about, /admin
   index.css              # CSS variables: colour palette + responsive layout
-index.html               # meta tags, favicon, theme pre-paint script
-public/                  # favicon.svg, og-image.png
+index.html               # meta tags, favicon, theme + SPA-restore scripts
+public/
+  products.json          # THE CATALOG (edited via /admin or by hand)
+  products/              # product images (.webp)
+  favicon.svg, og-image.png, 404.html
 ```
 
 ## Managing the catalog
 
-All products are defined in **`src/data/items.ts`** as an array of `Item` objects:
+Products live in **`public/products.json`** — an array of `Item` objects (see the shape in
+`src/data/items.ts`). Each item's `images` are **filenames** under `public/products/`:
 
-```ts
+```jsonc
 {
-  id: 'cinnabar-clock',                 // unique slug (also used internally)
-  title: 'Carved Cinnabar-Lacquer Wall Clock',
-  category: 'Clocks',                   // top-level group (sidebar builds itself from these)
-  sub: 'Wall',                          // optional sub-group, or null
-  price: 'Price on request',            // free text — e.g. '$480' or 'Price on request'
-  status: 'available',                  // 'available' | 'sold' (sold shows a badge)
-  era: 'China · carved-lacquer tradition',
-  dim: 'Approx. 12" diameter',
-  cond: 'Good — quartz movement',
-  label: 'cinnabar wall clock',         // fallback caption when there is no photo
-  images: [cinnabarWallClock],          // one or more imported images (first is the lead)
-  desc: 'A decorative charger in the classic Chinese carved cinnabar-lacquer style…',
+  "id": "cinnabar-clock",
+  "title": "Carved Cinnabar-Lacquer Wall Clock",
+  "category": "Clocks",      // sidebar builds itself from these
+  "sub": "Wall",             // optional sub-group, or null
+  "price": "Price on request",
+  "status": "available",     // "available" | "sold" (sold shows a badge)
+  "era": "China · carved-lacquer tradition",
+  "dim": "Approx. 12\" diameter",
+  "cond": "Good — quartz movement",
+  "label": "cinnabar wall clock",
+  "desc": "A decorative charger in the classic Chinese carved cinnabar-lacquer style…",
+  "images": ["cinnabar-wall-clock.webp"]
 }
 ```
 
-**To add a product:**
+There are two ways to edit it:
 
-1. Add the photo(s) to `src/assets/products/` (see image notes below).
-2. `import` the image at the top of `items.ts`.
-3. Add a new object to the `ITEMS` array with that image in `images: [...]`.
+1. **The admin page (recommended)** — see [Admin](#admin-content-management) below. A form
+   with photo upload that commits the changes for you. No code.
+2. **By hand** — edit `public/products.json` and drop optimized `.webp` files into
+   `public/products/`, then commit. (Use [Squoosh](https://squoosh.app) → WebP, longest edge
+   ~1200px; the admin does this automatically.)
 
-Categories and sub-categories — and all their counts — are **derived automatically** from
-the products (`src/lib/categories.ts`), so there is no separate list to maintain. Add an
-item in a new category and it appears in the sidebar on its own.
+Categories and sub-categories — and all their counts — are **derived automatically** from the
+products, so there's no separate list to maintain. A product with no `images` falls back to a
+striped placeholder.
 
-### Product images
+## Admin (content management)
 
-Images are optimized **WebP** (transparency supported) sized to ~1200px. The originals the
-photos came from were multi-megabyte PNGs; converting keeps the whole image set small
-(~3 MB total). To prepare a new photo, either:
+Visit **`/admin`** (e.g. `https://cvfesta.github.io/Down-Memory-Lane/admin`) to add, edit and
+remove products with a form, including drag-in photo upload that's auto-resized and converted
+to WebP. Saving commits `products.json` (and any new images) to this repo in a single commit;
+the deploy workflow then rebuilds the site, so changes go live ~1–2 minutes later.
 
-- Use [Squoosh](https://squoosh.app) → export WebP at ~1200px wide, **or**
-- Resize/convert any way you like, keeping the longest edge ~1000–1200px.
+**Signing in** uses a GitHub **fine-grained Personal Access Token** (stored only in the
+editor's browser — no passwords, no extra service):
 
-Drop the result in `src/assets/products/` and import it. A product with **no** `images`
-falls back to a striped placeholder, so missing photos won't break the page.
+1. GitHub → Settings → Developer settings → **Fine-grained tokens** → *Generate new token*.
+2. **Resource owner:** your account · **Repository access:** *Only select repositories* →
+   `Down-Memory-Lane`.
+3. **Permissions → Repository → Contents: Read and write** (nothing else needed).
+4. Set an expiry, generate, copy the `github_pat_…` string, and paste it into `/admin`.
+
+The token can only edit this one repository, so its blast radius is contained. When it
+expires, generate a new one and paste it again.
 
 ## Contact form
 
@@ -145,7 +162,7 @@ Pages, Netlify, Vercel, GitHub Pages). Typical settings:
 
 ## Known follow-ups
 
-- Prices are currently `'Price on request'` for every item — fill in real prices in `items.ts`.
-- Make the `og:image` / `og:url` absolute once a domain is set.
-- Products aren't individually deep-linkable yet (the whole site is one URL); adding routing
-  would make pieces shareable and improve SEO.
+- Prices are currently `'Price on request'` for every item — fill in real prices (via /admin
+  or in `public/products.json`).
+- If you move to a custom domain, update the absolute OG URLs in `index.html` and set
+  `base` back to `/` in `vite.config.ts`.

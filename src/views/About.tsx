@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HoverButton } from '../components/ui'
+import { serif } from '../lib/styles'
 
 const heading: CSSProperties = {
   fontSize: 10,
@@ -29,7 +30,7 @@ export function About() {
   return (
     <section style={{ paddingTop: 44 }}>
       <div
-        style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 'var(--hero)', fontWeight: 600, lineHeight: 1.05 }}
+        style={{ fontFamily: serif, fontSize: 'var(--hero)', fontWeight: 600, lineHeight: 1.05 }}
       >
         About Down Memory Lane
       </div>

@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { HoverButton } from './ui'
-import { useTheme } from '../lib/theme'
-import type { ThemePref } from '../lib/theme'
+import { ThemeMenu } from './ThemeMenu'
+import { serif } from '../lib/styles'
 
 const navBase: CSSProperties = {
   background: 'none',
@@ -16,20 +16,8 @@ const navBase: CSSProperties = {
 }
 const navHover: CSSProperties = { color: 'var(--gold)' }
 
-const themeSelect: CSSProperties = {
-  border: '1px solid var(--line-2)',
-  background: 'var(--surface)',
-  color: 'var(--ink)',
-  borderRadius: 8,
-  padding: '6px 8px',
-  fontSize: 12,
-  fontFamily: 'inherit',
-  cursor: 'pointer',
-}
-
 export function Header() {
   const navigate = useNavigate()
-  const { pref, setTheme } = useTheme()
 
   return (
     <header
@@ -60,7 +48,7 @@ export function Header() {
         >
           <div
             style={{
-              fontFamily: "'Playfair Display',Georgia,serif",
+              fontFamily: serif,
               fontSize: 'var(--brand)',
               fontWeight: 600,
               lineHeight: 1,
@@ -91,17 +79,7 @@ export function Header() {
           <HoverButton baseStyle={navBase} hoverStyle={navHover} onClick={() => navigate('/contact')}>
             Contact
           </HoverButton>
-          <select
-            value={pref}
-            onChange={(e) => setTheme(e.target.value as ThemePref)}
-            aria-label="Theme"
-            title="Theme"
-            style={themeSelect}
-          >
-            <option value="auto">◐ Auto theme</option>
-            <option value="light">☀ Light mode</option>
-            <option value="dark">☾ Dark mode</option>
-          </select>
+          <ThemeMenu />
         </nav>
       </div>
     </header>
